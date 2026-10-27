@@ -1964,11 +1964,19 @@ body {
   background: var(--ink); border: 1px solid #C7AA80;
   color: var(--paper); scrollbar-gutter: stable;
 }
-.rules-panel .eyebrow { font: 500 12px/18px var(--font-ui); margin-bottom: 14px; }
 .rules-panel h2 { font: 600 30px/38px var(--font-ui); margin-bottom: 20px; }
-.rules-panel p:not(.eyebrow) { font: 400 16px/26px var(--font-ui); }
-.rules-panel .rules-alternatives { margin-top: 18px; color: #c7c7c7; font-size: 13px!important; line-height: 21px!important; }
-.rules-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 28px; }
+.rules-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding: 18px 0; border-block: 1px solid var(--line); }
+.rules-controls .guide-group { gap: 12px; align-content: start; }
+.rules-controls .guide-group + .guide-group { padding-left: 0; border-left: 0; }
+.rules-controls .guide-inputs { height: 44px; gap: 10px; }
+.rules-controls .guide-inputs svg { width: 38px; height: 44px; }
+.rules-controls .guide-inputs kbd { height: 36px; min-width: 32px; font-size: 16px; }
+.rules-controls .guide-inputs .guide-shift { min-width: 56px; font-size: 13px; }
+.rules-control-hint { color: var(--paper); font: 400 13px/20px var(--font-ui); }
+.rules-cues { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; margin: 18px 0 0; padding: 0; list-style: none; }
+.rules-cues li { display: flex; align-items: center; gap: 8px; color: var(--muted); font: 400 13px/20px var(--font-ui); }
+.rules-cues svg { flex: none; width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.rules-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
 .rules-actions .primary { font: 600 16px/22px var(--font-ui); }
 .rules-actions .text-button { min-height: 48px; min-width: 80px; }
 @media(max-width:700px) {
@@ -1976,6 +1984,16 @@ body {
   .hero-note { left: 7%; top: 36%; width: 86%; max-width: none; padding: 12px 14px; gap: 16px; }
   .guide-group + .guide-group { padding-left: 18px; }
   .embark-action { bottom: 7%; }
+}
+@media(max-width:400px) {
+  .rules-controls, .rules-cues { gap: 16px; }
+  .rules-controls .guide-inputs { height: 34px; gap: 6px; }
+  .rules-controls .guide-inputs svg { width: 30px; height: 34px; }
+  .rules-controls .guide-inputs kbd { height: 28px; min-width: 26px; padding: 0 4px; font-size: 14px; }
+  .rules-controls .guide-inputs .guide-shift { min-width: 44px; font-size: 11px; }
+  .rules-control-hint, .rules-cues li { font-size: 12px; line-height: 18px; }
+  .rules-actions .primary { flex: 1; min-width: 0; gap: 10px; padding: 14px 16px; font-size: 14px; line-height: 20px; }
+  .rules-actions .text-button { min-width: 64px; }
 }
 @media(max-height:700px) and (max-width:700px) {
   .hero-note { top: 34%; padding: 10px 12px; }
@@ -1985,6 +2003,11 @@ body {
   .hero-note { left: 5%; top: 54%; width: max-content; max-width: 49%; padding: 10px 12px; }
   .rules-panel { padding: 20px 26px; }
   .rules-panel h2 { margin-bottom: 12px; }
+  .rules-controls { padding-block: 10px; }
+  .rules-controls .guide-group { gap: 6px; }
+  .rules-controls .guide-inputs { height: 34px; }
+  .rules-controls .guide-inputs svg { width: 30px; height: 34px; }
+  .rules-cues { margin-top: 12px; }
   .rules-actions { margin-top: 16px; }
 }
 @media(forced-colors:active) {
@@ -2068,10 +2091,37 @@ body {
   <div class="pause-screen" id="pause-screen" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div><p class="eyebrow" style="justify-content:center">Море подождёт</p><h2 id="pause-title">Пауза</h2><p>Твой маршрут останется на месте.</p><div class="pause-buttons"><button class="primary" id="resume">Продолжить путь <span aria-hidden="true">→</span></button><button class="text-button" id="restart">Начать заново</button></div></div></div>
   <div class="rules-screen" id="rules-screen" role="dialog" aria-modal="true" aria-labelledby="rules-title" aria-describedby="rules-copy rules-alternatives" hidden>
     <div class="rules-panel">
-      <p class="eyebrow">Перед отплытием</p>
       <h2 id="rules-title">Как играть</h2>
-      <p id="rules-copy">Двигай корабль вверх и вниз по морю, чтобы обходить препятствия и собирать ориентиры. Удерживай правую кнопку мыши, чтобы защититься от Горгоны.</p>
-      <p class="rules-alternatives" id="rules-alternatives">Клавиатура: ↑ / ↓ или W / S — курс, Shift — щит. На сенсорном экране: коснись моря на нужной высоте или используй стрелки, кнопка «Щит» — защита. Щит не защищает от камней.</p>
+      <div class="rules-controls" aria-label="Управление">
+    <div class="guide-group">
+      <span class="guide-label">Курс</span>
+      <span class="guide-inputs guide-desktop" aria-hidden="true">
+        <svg viewBox="0 0 32 36"><rect x="10" y="3" width="18" height="29" rx="9"/><path d="M19 3v9m-9 0h18M4 8v20m-3-17 3-3 3 3M1 25l3 3 3-3"/></svg>
+        <kbd>↑</kbd><kbd>↓</kbd>
+      </span>
+      <span class="guide-inputs guide-touch" aria-hidden="true">
+        <svg viewBox="0 0 32 36"><path d="M15 19V10a3 3 0 0 1 6 0v7l4 1c3 1 4 3 3 6l-2 8H15L8 22a3 3 0 0 1 4-4l3 3M10 8a8 8 0 0 1 16 0"/><path d="M12 8a6 6 0 0 1 12 0"/></svg>
+      </span>
+      <p class="rules-control-hint" id="rules-steering-hint">Вверх / вниз</p>
+    </div>
+    <div class="guide-group">
+      <span class="guide-label">Щит</span>
+      <span class="guide-inputs guide-desktop" aria-hidden="true">
+        <svg viewBox="0 0 32 36"><path class="guide-accent" d="M16 3a9 9 0 0 1 9 9h-9Z"/><rect x="7" y="3" width="18" height="29" rx="9"/><path d="M16 3v9M7 12h18"/></svg>
+        <kbd class="guide-shift">Shift</kbd>
+      </span>
+      <span class="guide-inputs guide-touch" aria-hidden="true">
+        <svg viewBox="0 0 32 36"><path d="m16 3 11 5v10c0 7-7 12-11 15C12 30 5 25 5 18V8Z"/><path d="m10 18 4 4 8-9"/></svg>
+      </span>
+      <p class="rules-control-hint" id="rules-shield-hint">Удерживай · от взгляда</p>
+    </div>
+      </div>
+      <ul class="rules-cues">
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 14 9 21 12 14 14 12 22 10 14 3 12 10 9ZM12 8V16M8 12H16"/></svg><span>Собирай</span></li>
+        <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3 17 2 23 11 18 22 5 21 1 12ZM6 7 12 5 18 11 14 17"/></svg><span>Обходи</span></li>
+      </ul>
+      <p class="sr-only" id="rules-copy">Двигай корабль вверх и вниз по морю, чтобы обходить препятствия и собирать ориентиры. Удерживай правую кнопку мыши, чтобы защититься от Горгоны.</p>
+      <p class="sr-only" id="rules-alternatives">Клавиатура: ↑ / ↓ или W / S — курс, Shift — щит. На сенсорном экране: коснись моря на нужной высоте или используй стрелки, кнопка «Щит» — защита. Щит не защищает от камней.</p>
       <div class="rules-actions"><button class="primary" id="rules-start">Начать плавание <span aria-hidden="true">→</span></button><button class="text-button" id="rules-back">Назад</button></div>
     </div>
   </div>
@@ -3160,6 +3210,8 @@ const OdysseyCore = (() => {
       : touch
         ? 'Коснись моря — курс. Кнопка «Щит» — защита.'
         : 'Указатель или стрелки — курс. Правая кнопка мыши — щит.';
+    $('rules-steering-hint').textContent = touch ? 'Коснись моря' : 'Вверх / вниз';
+    $('rules-shield-hint').textContent = touch ? 'Нажми · от взгляда' : 'Удерживай · от взгляда';
     $('rules-copy').textContent = touch
       ? 'Коснись моря выше или ниже — корабль пойдёт к этой высоте. Обходи препятствия и собирай ориентиры. Нажми «Щит», чтобы защититься от Горгоны; нажми ещё раз, чтобы опустить его.'
       : keyboard
