@@ -1368,10 +1368,20 @@ body {
 }
 
 .interaction-feedback[data-kind=signal],
-.interaction-feedback[data-kind=reveal],
 .interaction-feedback[data-kind=block] {
   background: #eee;
   color: #111;
+}
+
+.interaction-feedback[data-kind=reveal],
+.interaction-feedback[data-kind=guide-covered] {
+  border-color: #b8c7d0;
+  color: #e5edf1;
+  background: #12171b;
+}
+
+.interaction-feedback[data-kind=guide-covered] {
+  border-style: dashed;
 }
 
 .interaction-feedback[data-kind=stone] {
@@ -1474,6 +1484,12 @@ body {
   border-color: #b8c7d0;
   color: #e5edf1;
   background: #12171be6;
+}
+
+.app[data-mode=sailing] #chapter-hint.guide-hint {
+  color: #e5edf1;
+  border-left: 2px solid #b8c7d0;
+  padding-left: 9px;
 }
 
 @media(max-width:700px) {
@@ -2084,7 +2100,7 @@ body {
     <span id="hero-controls" class="sr-only"></span>
   </section>
   <section class="hud" id="hud" aria-labelledby="chapter-title" hidden>
-    <div><div class="chapter-index" id="chapter-index">ОДНО ПУТЕШЕСТВИЕ</div><h2 id="chapter-title">Курс на ИТ-Одиссею</h2><p id="chapter-hint">Обходи рифы. Прикрывайся от взгляда.</p><div id="sea-status" class="sea-status" role="status" aria-live="polite" hidden></div><div id="boost-status" class="boost-status" role="timer" aria-live="off" aria-label="Время ускорения" hidden></div><div id="reveal-status" class="reveal-status" role="timer" aria-live="off" aria-label="Время подсказки Тиресия" hidden></div></div>
+    <div><div class="chapter-index" id="chapter-index">ОДНО ПУТЕШЕСТВИЕ</div><h2 id="chapter-title">Курс на ИТ-Одиссею</h2><p id="chapter-hint">Обходи рифы. Прикрывайся от взгляда.</p><div id="sea-status" class="sea-status" role="status" aria-live="polite" hidden></div><div id="boost-status" class="boost-status" role="timer" aria-live="off" aria-label="Время ускорения" hidden></div><div id="reveal-status" class="reveal-status" role="timer" aria-live="off" aria-label="Время обзора рифов" hidden></div></div>
     <div class="signal-count"><b id="signal-number">00</b>сигналов собрано</div>
   </section>
   <div id="shade" class="panel-shade" hidden></div>
@@ -2190,8 +2206,8 @@ const OdysseyCore = (() => {
       icon: 'M3 8C9 8 11 3 19 3M2 14C8 14 9 7 15 7C23 7 23 15 17 15C12 15 12 11 17 11M4 20C12 21 19 19 23 13',
     },
     reveal: {
-      label: 'ТИРЕСИЙ · ОПАСНОСТЬ ВПЕРЕДИ',
-      note: 'Контуры рифов во мгле видны 6 с.',
+      label: 'ТИРЕСИЙ ПОМОГ',
+      note: 'Рифы видны заранее · 6 с',
       priority: 2,
       icon: 'M10 22 14 5Q15 1 19 3Q22 5 19 8M7 22H13M12 12 16 13',
     },
@@ -2216,6 +2232,12 @@ const OdysseyCore = (() => {
     covered: {
       label: 'СИГНАЛ ЗАКРЫТ',
       note: 'Опусти щит, чтобы собрать',
+      priority: 1,
+      icon: 'M12 2A10 10 0 1 0 12 22A10 10 0 1 0 12 2M5 5 19 19',
+    },
+    'guide-covered': {
+      label: 'ТИРЕСИЙ ЗАКРЫТ ЩИТОМ',
+      note: 'Опусти щит для встречи',
       priority: 1,
       icon: 'M12 2A10 10 0 1 0 12 22A10 10 0 1 0 12 2M5 5 19 19',
     },
@@ -2659,7 +2681,7 @@ const OdysseyCore = (() => {
         } else if (e.type === 'signal' || e.type === 'gold' || e.type === 'tiresias') {
           if (state.shield) {
             if (!e.warned) {
-              react('covered', e.at, e.lane);
+              react(e.type === 'tiresias' ? 'guide-covered' : 'covered', e.at, e.lane);
               e.warned = true;
             }
             continue;
@@ -2735,8 +2757,8 @@ const OdysseyCore = (() => {
                     ? 'Планкты движутся. Пройди между ними или обойди снаружи.'
                   : nearGorgon
                     ? 'От взгляда — щит или обход. Сигналы можно пропустить.'
-                  : state.distance >= 2.95 && state.distance < 3.3
-                    ? 'Тиресий поможет разглядеть рифы во мгле. Опусти щит для встречи.'
+                  : state.distance >= 2.65 && state.distance < 3.3
+                    ? 'Тиресий покажет рифы. Подплыви без щита.'
                   : state.distance >= 3.3 && state.distance < 4.45
                     ? 'Рифы во мгле. Смотри на каменные контуры и выбирай обход.'
                   : state.swell > 0.12
@@ -2881,6 +2903,7 @@ const OdysseyCore = (() => {
   });
   let state = simulation.state;
   const SIGNAL_VISUAL_SCALE = 0.65;
+  const HULL_MARK_SCALE = 0.62;
   const collectedStars = [],
     hullMarks = [],
     steeringPointers = new Map();
@@ -3308,7 +3331,7 @@ const OdysseyCore = (() => {
     revealUiSecond = second;
     const el = $('reveal-status');
     el.hidden = second === 0;
-    el.textContent = second ? 'ТИРЕСИЙ · ' + second + ' с' : '';
+    el.textContent = second ? 'ОБЗОР РИФОВ · ' + second + ' с' : '';
   }
   function setCounterPulse(active) {
     if (active === counterPulse) return;
@@ -3377,6 +3400,7 @@ const OdysseyCore = (() => {
     }
     if (state.hint && $('chapter-hint').textContent !== state.hint) {
       $('chapter-hint').textContent = state.hint;
+      $('chapter-hint').classList.toggle('guide-hint', state.hint.startsWith('Тиресий'));
       announce(state.hint);
     }
     setProgress();
@@ -3413,6 +3437,7 @@ const OdysseyCore = (() => {
     $('chapter-index').textContent = 'ОДНО ПУТЕШЕСТВИЕ';
     $('chapter-title').textContent = 'Курс на ИТ-Одиссею';
     $('chapter-hint').textContent = 'Обходи рифы. Прикрывайся от взгляда.';
+    $('chapter-hint').classList.remove('guide-hint');
     $('route-left').textContent = 'Точка А · В море';
     $('signal-number').textContent = '00';
     canvas.tabIndex = 0;
@@ -3737,7 +3762,7 @@ const OdysseyCore = (() => {
   }
   function hullMarkAnchor(index) {
     // Keep the small carving on the upper planking, clear of the oar blades.
-    return { x: -48 + index * 48, y: -2 };
+    return { x: -58 + index * 66, y: -2 };
   }
   function hullMarkDestination(index, time) {
     const anchor = hullMarkAnchor(index),
@@ -3753,9 +3778,15 @@ const OdysseyCore = (() => {
     };
   }
   function windMarkArt(bright) {
-    return cachedArt('hull-wind:' + bright, 96, 64, 48, 32, (ctx) => {
+    return cachedArt('hull-wind:' + bright, 128, 128, 64, 64, (ctx) => {
+      const glow = ctx.createRadialGradient(0, -7, 3, 0, -7, 49);
+      glow.addColorStop(0, bright ? GOLD.light + '64' : GOLD.rim + '48');
+      glow.addColorStop(.58, bright ? GOLD.core + '28' : GOLD.rim + '1c');
+      glow.addColorStop(1, GOLD.rim + '00');
+      ctx.fillStyle = glow;
+      ctx.fillRect(-50, -57, 100, 100);
       ctx.translate(0, 14);
-      paintTailwind(ctx, !bright);
+      paintTailwind(ctx, !bright, true);
     });
   }
   function drawHullMarks(ctx) {
@@ -3766,7 +3797,7 @@ const OdysseyCore = (() => {
         bright = i === hullMarks.length - 1 && state.boostLeft > 0;
       ctx.save();
       ctx.globalAlpha *= bright ? 1 : 0.9;
-      drawArt(ctx, windMarkArt(bright), anchor.x, anchor.y, 0.28);
+      drawArt(ctx, windMarkArt(bright), anchor.x, anchor.y, HULL_MARK_SCALE);
       ctx.restore();
     }
   }
@@ -3794,7 +3825,7 @@ const OdysseyCore = (() => {
       const p = smooth(0, 1, progress),
         destination = hullMarkDestination(i, time),
         fromScale = (W < 700 ? 0.75 : 1) * SIGNAL_VISUAL_SCALE,
-        markScale = fromScale + (destination.size * 0.28 - fromScale) * p;
+        markScale = fromScale + (destination.size * HULL_MARK_SCALE - fromScale) * p;
       ctx.save();
       ctx.translate(
         mark.fromX * W + (destination.x - mark.fromX * W) * p,
@@ -3822,7 +3853,7 @@ const OdysseyCore = (() => {
   function singleStarArt() {
     return cachedArt('single-star', 40, 40, 20, 20, paintSingleStar);
   }
-  function paintTailwind(ctx, subdued = false) {
+  function paintTailwind(ctx, subdued = false, hullMark = false) {
     ctx.save();
     if (!subdued) {
       const glow = ctx.createRadialGradient(8, -14, 1, 8, -14, 47);
@@ -3847,10 +3878,10 @@ const OdysseyCore = (() => {
     ctx.lineWidth = 5.8;
     ctx.stroke();
     ctx.strokeStyle = subdued ? GOLD.rim : GOLD.core;
-    ctx.lineWidth = 3.6;
+    ctx.lineWidth = hullMark ? 4.7 : 3.6;
     ctx.stroke();
     ctx.strokeStyle = GOLD.light;
-    ctx.lineWidth = 1.25;
+    ctx.lineWidth = hullMark ? 2.2 : 1.25;
     ctx.stroke();
     for (const [x, y, radius] of [
       [-27, -23, 2.3],
@@ -3859,8 +3890,8 @@ const OdysseyCore = (() => {
       [-15, 11, 2.2],
       [38, -14, 2.4],
     ]) {
-      dot(ctx, x, y, radius + 0.8, subdued ? GOLD.rim : GOLD.core);
-      dot(ctx, x, y, radius, GOLD.light);
+      dot(ctx, x, y, radius + (hullMark ? 1.4 : 0.8), subdued ? GOLD.rim : GOLD.core);
+      dot(ctx, x, y, radius + (hullMark ? .5 : 0), GOLD.light);
     }
     ctx.restore();
   }
@@ -3959,8 +3990,8 @@ const OdysseyCore = (() => {
         gold = e.type === 'boost';
       ctx.save();
       ctx.globalAlpha = fade;
-      if (e.type === 'covered') {
-        ctx.strokeStyle = '#dddddd';
+      if (e.type === 'covered' || e.type === 'guide-covered') {
+        ctx.strokeStyle = e.type === 'guide-covered' ? '#dbe8ef' : '#dddddd';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(x, y - 15, 16, 0, Math.PI * 2);
@@ -4122,11 +4153,53 @@ const OdysseyCore = (() => {
       if (image.complete && image.naturalWidth) ctx.drawImage(image, -64, -172, 128, 172);
     });
   }
+  function tiresiasAuraArt() {
+    return cachedArt('tiresias-aura', 180, 200, 90, 172, (ctx) => {
+      const glow = ctx.createRadialGradient(9, -92, 5, 9, -92, 88);
+      glow.addColorStop(0, '#dbe8ef65');
+      glow.addColorStop(.56, '#b8c7d02c');
+      glow.addColorStop(1, '#b8c7d000');
+      ctx.fillStyle = glow;
+      ctx.fillRect(-90, -172, 180, 180);
+    });
+  }
+  function tiresiasGuideSignArt() {
+    return cachedArt('tiresias-guide-sign', 48, 48, 24, 24, (ctx) => {
+      const glow = ctx.createRadialGradient(0, 0, 2, 0, 0, 23);
+      glow.addColorStop(0, '#e5edf1b0');
+      glow.addColorStop(1, '#b8c7d000');
+      ctx.fillStyle = glow;
+      ctx.fillRect(-24, -24, 48, 48);
+      poly(ctx, [[0,-13],[3,-3],[13,0],[3,3],[0,13],[-3,3],[-13,0],[-3,-3]], '#e5edf1');
+      dot(ctx, 0, 0, 2.6, '#ffffff');
+    });
+  }
+  function tiresiasLabelArt() {
+    return cachedArt('tiresias-help-label', 178, 28, 89, 14, (ctx) => {
+      ctx.fillStyle = '#11191fee';
+      ctx.fillRect(-89, -14, 178, 28);
+      ctx.strokeStyle = '#b8c7d0';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-88.5, -13.5, 177, 27);
+      ctx.fillStyle = '#e5edf1';
+      ctx.font = '600 11px Montserrat, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('ТИРЕСИЙ · ПОМОЩЬ', 0, 0);
+    });
+  }
   function drawTiresias(ctx, x, y, size, t) {
     ctx.save();
-    ctx.globalAlpha *= .88;
     waterContact(ctx, x, y + 2 * size, 64 * size, .5);
+    drawArt(ctx, tiresiasAuraArt(), x, y, size);
     drawArt(ctx, tiresiasArt(), x, y, size);
+    const signX = x + 34 * size, signY = y - 154 * size;
+    drawArt(ctx, tiresiasGuideSignArt(), signX, signY, size);
+    if (H > 500 && x > 95 && x < W - 95) {
+      const labelX = x, labelY = y - 190 * size - 14;
+      line(ctx, [[labelX + 18, labelY + 14], [signX, signY - 9 * size]], '#b8c7d0', 1.2);
+      drawArt(ctx, tiresiasLabelArt(), labelX, labelY);
+    }
     ctx.restore();
   }
   function planctCliffArt() {
@@ -5254,14 +5327,14 @@ const OdysseyCore = (() => {
       ctx.translate(256, 110);
       ctx.scale(256, 110);
       const fog = ctx.createRadialGradient(0, 0, .08, 0, 0, 1);
-      fog.addColorStop(0, '#b6bdc56b');
-      fog.addColorStop(.6, '#7b858e52');
+      fog.addColorStop(0, '#b6bdc5a0');
+      fog.addColorStop(.6, '#7b858e80');
       fog.addColorStop(1, '#747e8800');
       ctx.fillStyle = fog;
       ctx.fillRect(-1, -1, 2, 2);
       ctx.restore();
       const r = rng(355435);
-      for (let i = 0; i < 500; i++) dot(ctx, r()*512, r()*220, .3+r()*.55, '#d2d7dc15');
+      for (let i = 0; i < 760; i++) dot(ctx, r()*512, r()*220, .3+r()*.55, '#d2d7dc1b');
     });
   }
   function drawReefMist(ctx) {
