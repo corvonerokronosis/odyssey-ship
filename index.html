@@ -1781,11 +1781,11 @@ body {
 }
 
 @media(max-height:500px) {
-  .interaction-feedback[data-kind=reveal] {
+  .interaction-feedback {
     padding: 6px 10px;
   }
 
-  .interaction-feedback[data-kind=reveal] small {
+  .interaction-feedback small {
     display: none;
   }
 
@@ -1869,7 +1869,7 @@ body {
 
 }
 
-@media(max-height:500px) and (min-width:701px) {
+@media(max-height:500px) and (orientation:landscape) {
   .intro .eyebrow {
     left: 5%;
     top: 20%;
@@ -1999,8 +1999,13 @@ body {
   .hero-note { top: 34%; padding: 10px 12px; }
   .embark-action { bottom: 5%; }
 }
-@media(max-height:500px) and (min-width:701px) {
+@media(max-height:500px) and (orientation:landscape) {
   .hero-note { left: 5%; top: 54%; width: max-content; max-width: 49%; padding: 10px 12px; }
+  .finish { display: flex; flex-direction: column; align-items: flex-start; }
+  .finish .eyebrow { order: 0; }
+  .finish h2 { order: 1; }
+  .finish-actions { order: 2; margin-top: 12px; }
+  .finish-copy, .finish .travel-log, .finish-facts, .finish-route { order: 3; }
   .rules-panel { padding: 20px 26px; }
   .rules-panel h2 { margin-bottom: 12px; }
   .rules-controls { padding-block: 10px; }
@@ -2009,6 +2014,13 @@ body {
   .rules-controls .guide-inputs svg { width: 30px; height: 34px; }
   .rules-cues { margin-top: 12px; }
   .rules-actions { margin-top: 16px; }
+}
+@media(max-height:340px) and (orientation:landscape) {
+  .rules-panel { padding: 12px 18px; }
+  .rules-panel h2 { font-size: 24px; line-height: 30px; margin-bottom: 8px; }
+  .rules-controls { padding-block: 7px; }
+  .rules-cues { margin-top: 8px; }
+  .rules-actions { margin-top: 10px; }
 }
 @media(forced-colors:active) {
   .hero-note, .rules-screen, .rules-panel { background: Canvas; color: CanvasText; }
@@ -2870,7 +2882,8 @@ const OdysseyCore = (() => {
   let state = simulation.state;
   const SIGNAL_VISUAL_SCALE = 0.65;
   const collectedStars = [],
-    hullMarks = [];
+    hullMarks = [],
+    steeringPointers = new Map();
   let rulesOpen = false;
   let paused = false,
     keys = new Set(),
@@ -2920,6 +2933,10 @@ const OdysseyCore = (() => {
   new ResizeObserver(() => resize(mainContext)).observe($('app'));
   let feedbackPosition = '',
     feedbackWidth = 0,
+    feedbackHeight = 0,
+    feedbackHudBottom = 0,
+    feedbackLimitTop = 0,
+    feedbackLayoutKey = '',
     counterPulse = false,
     boostUiSecond = -1,
     revealUiSecond = -1;
@@ -3091,14 +3108,16 @@ const OdysseyCore = (() => {
     const b = $(id);
     b.addEventListener('pointerdown', (e) => {
       if (paused || state.mode !== 'sailing') return;
-      held = dir;
+      steeringPointers.delete(e.pointerId);
+      steeringPointers.set(e.pointerId, dir);
+      syncSteeringPointers();
       b.setPointerCapture(e.pointerId);
-      b.setAttribute('aria-pressed', 'true');
     });
     ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((event) =>
-      b.addEventListener(event, () => {
-        held = 0;
-        b.setAttribute('aria-pressed', 'false');
+      b.addEventListener(event, (e) => {
+        if (steeringPointers.get(e.pointerId) !== dir) return;
+        steeringPointers.delete(e.pointerId);
+        syncSteeringPointers();
       }),
     );
     b.addEventListener('click', () => {
@@ -3109,6 +3128,12 @@ const OdysseyCore = (() => {
       }
     });
   });
+  function syncSteeringPointers() {
+    const active = [...steeringPointers.values()];
+    held = active.at(-1) || 0;
+    $('up').setAttribute('aria-pressed', String(active.includes(-1)));
+    $('down').setAttribute('aria-pressed', String(active.includes(1)));
+  }
   let displayedFeedback = null,
     shieldUiValue = null,
     signalUiValue = -1;
@@ -3169,6 +3194,7 @@ const OdysseyCore = (() => {
   if (document.fonts)
     document.fonts.ready.then(() => {
       artCache.clear();
+      syncFeedbackLayout(true);
       paintNeeded = true;
     });
   motion.addEventListener?.('change', () => {
@@ -3188,6 +3214,10 @@ const OdysseyCore = (() => {
     const controlsHadFocus = $('controls').contains(document.activeElement);
     inputMode = mode;
     $('app').dataset.input = mode;
+    if (mode !== 'touch' && steeringPointers.size) {
+      steeringPointers.clear();
+      syncSteeringPointers();
+    }
     if (desktopInput.matches && mode !== 'touch') {
       if (state.shieldToggle) {
         state.shieldToggle = false;
@@ -3303,6 +3333,24 @@ const OdysseyCore = (() => {
     $('shield').setAttribute('aria-pressed', String(state.shield));
     $('shield').setAttribute('aria-label', state.shield ? 'Опустить щит' : 'Поднять щит');
   }
+  function syncFeedbackLayout(force = false) {
+    const key = [W, H, $('chapter-hint').textContent, $('sea-status').textContent,
+      boostUiSecond, revealUiSecond, state.feedback?.type || '', inputMode].join('|');
+    if (!force && key === feedbackLayoutKey) return;
+    feedbackLayoutKey = key;
+    if (!state.feedback) return;
+    const appTop = $('app').getBoundingClientRect().top,
+      hud = $('hud').getBoundingClientRect(),
+      controls = $('controls').getBoundingClientRect(),
+      progress = $('progress').getBoundingClientRect(),
+      feedback = $('interaction-feedback').getBoundingClientRect();
+    feedbackWidth = feedback.width;
+    feedbackHeight = feedback.height;
+    feedbackHudBottom = hud.bottom - appTop;
+    feedbackLimitTop = Math.min(controls.height ? controls.top : H, progress.top) - appTop;
+    feedbackPosition = '';
+    paintNeeded = true;
+  }
   function syncGameplayUI(events = []) {
     syncShieldButton();
     updateSeaStatus();
@@ -3324,7 +3372,6 @@ const OdysseyCore = (() => {
         $('interaction-note').textContent = info.note;
         $('interaction-note').hidden = !info.note;
         $('interaction-symbol').setAttribute('d', info.icon);
-        feedbackWidth = el.getBoundingClientRect().width;
         paintNeeded = true;
       }
     }
@@ -3333,6 +3380,7 @@ const OdysseyCore = (() => {
       announce(state.hint);
     }
     setProgress();
+    syncFeedbackLayout();
     for (const event of events) {
       if (event.type === 'reaction') rememberCollectedSignal(event);
       else if (event.type === 'tone') tone(event.frequency, event.duration);
@@ -3442,12 +3490,12 @@ const OdysseyCore = (() => {
   }
   function releaseInput() {
     keys.clear();
-    held = 0;
+    steeringPointers.clear();
+    syncSteeringPointers();
     rollTarget = 0;
     state.shieldHeld = false;
     state.shieldMouseHeld = false;
     updateShield();
-    ['up', 'down'].forEach((id) => $(id).setAttribute('aria-pressed', 'false'));
   }
   function setPaused(value) {
     if (state.mode !== 'sailing' || paused === value) return;
@@ -3559,7 +3607,7 @@ const OdysseyCore = (() => {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     artCache.clear();
     collectedStars.forEach((star, index) => Object.assign(star, collectedStarSlot(index)));
-    if (state.feedback) feedbackWidth = $('interaction-feedback').getBoundingClientRect().width;
+    syncFeedbackLayout(true);
     paintNeeded = true;
   }
   function path(ctx, points, close = false) {
@@ -3950,8 +3998,9 @@ const OdysseyCore = (() => {
     if (state.feedback) {
       const half = Math.min(feedbackWidth, W - 24) / 2,
         x = Math.round(clamp(bx, half + 12, W - half - 12)),
-        y = Math.round(clamp(by - size * 0.88 - 24,
-          H <= 500 && state.feedback.type === 'reveal' ? H * .52 : H < 600 ? H * .32 : 220, H - 130)),
+        lowest = feedbackHudBottom + feedbackHeight + 8,
+        highest = feedbackLimitTop - 8,
+        y = Math.round(clamp(by - size * 0.88 - 24, lowest, Math.max(lowest, highest))),
         pos = x + ':' + y;
       if (pos !== feedbackPosition) {
         $('interaction-feedback').style.transform =
